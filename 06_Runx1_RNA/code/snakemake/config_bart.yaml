@@ -1,0 +1,175 @@
+samples:
+    - SLX-21184_SITTA7_H5NKNDMXY
+    - SLX-21184_SITTB7_H5NKNDMXY
+    - SLX-21184_SITTC7_H5NKNDMXY
+    - SLX-21184_SITTD7_H5NKNDMXY
+    - SLX-21184_SITTE12_H5NKNDMXY
+    - SLX-21184_SITTH10_H5NKNDMXY
+
+stages:
+    - E8.5
+
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/
+    original_data: /rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/data/SLX21184
+    processed_data: /rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/processed
+    results: /rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/results
+    atlas: /rds/project/rds-SDzz0CATGms/users/bt392/atlasses/gastrulation/pijuansala2019_gastrulation10x
+
+###############
+## Resources ##
+###############
+
+resources:
+    marker_genes: /rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/results/marker_genes/all_stages/marker_genes.txt.gz
+    #umap: "/rds/project/rds-SDzz0CATGms/users/bt392/multiome_practice/results_new/rna/dimensionality_reduction/umap_features1000_pcs30_neigh25_dist0.3.txt.gz"
+    celltypes: ["Epiblast", "Primitive_Streak", "Caudal_epiblast", "PGC", "Anterior_Primitive_Streak", "Notochord", "Def._endoderm", "Gut", "Nascent_mesoderm", "Mixed_mesoderm", "Intermediate_mesoderm", "Caudal_Mesoderm", "Paraxial_mesoderm", "Somitic_mesoderm", "Pharyngeal_mesoderm", "Cardiomyocytes", "Allantois", "ExE_mesoderm", "Mesenchyme", "Haematoendothelial_progenitors", "Endothelium", "Blood_progenitors_1", "Blood_progenitors_2", "Erythroid1", "Erythroid2", "Erythroid3", "NMP", "Rostral_neurectoderm", "Caudal_neurectoderm", "Neural_crest", "Forebrain_Midbrain_Hindbrain", "Spinal_cord", "Surface_ectoderm", "Visceral_endoderm", "ExE_endoderm", "ExE_ectoderm", "Parietal_endoderm"]
+    stages: ["E8.5"]# ["E7.5","E8.0","E8.5","E8.75"]
+    TFs_file: "/rds/project/rds-SDzz0CATGms/users/bt392/atlasses/TFs.txt"
+  
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_seurat: ../processing/1_create_seurat_rna.R
+    qc: ../processing/2_QC.R
+    seurat_to_sce: ../processing/3_seurat_to_SCE.R
+    doublet_detection: ../processing/4_doublet_detection.R
+    parse_doublets: ../processing/5_parse_sample_metadata_after_doublets.R
+    mapping_mnn: ../mapping/run/mnn/mapping_mnn.R
+    parse_mapping: ../mapping/run/parse_sample_metadata_after_mapping.R
+    dimensionality_reduction_sce: ../dimensionality_reduction/dimensionality_reduction_sce.R
+    dimensionality_reduction_seurat: ../dimensionality_reduction/dimensionality_reduction_seurat.R
+    pseudobulk_rna: ../pseudobulk/pseudobulk_rna.R
+    celltype_validation_single_cells: ../celltype_validation/celltype_validation_single_cells.R
+    celltype_validation_pseudobulk: ../celltype_validation/celltype_validation_pseudobulk.R
+    plot_mapping_results: ../mapping/analysis/plot_mapping_umap.R
+    plot_celltype_proportions: ../celltype_proportions/plot_celltype_proportions.R
+    infer_trajectories: ../trajectories/infer_trajectory.R
+    coexpression_TF_vs_gene_single_cells: ../TF2gene_coexpression/coexpression_TF_vs_gene_single_cells.R
+    coexpression_TF_vs_gene_pseudobulk: ../TF2gene_coexpression/coexpression_TF_vs_gene_pseudobulk.R
+
+
+
+################
+## Parameters ##
+################
+   
+doublet_detection:
+    doublet_score_threshold: 1.25
+
+qc:
+    min_nFeature_RNA: 2000
+    max_nFeature_RNA: 10000
+    percent_mt: 40
+    percent_rib: 40
+
+mapping_mnn:
+    atlas_stages: ["E6.5","E6.75","E7.0","E7.25","E7.5","E7.75","E8.0","E8.25","E8.5"]
+    npcs: 50
+    n_neighbours: 25
+    
+dimensionality_reduction_sce:
+    npcs: 50
+    features: 2500
+    n_neighbors: 25
+    min_dist: 0.5
+    vars_to_regress: ["nFeature_RNA"]
+    batch_correction: ["sample"]
+    colour_by: ["sample", "celltype.mapped_mnn", "doublet_score", "doublet_call", "nFeature_RNA", "stage"]
+
+
+celltype_validation_single_cells:
+    celltype_label: "celltype.mapped_mnn"
+
+celltype_validation_pseudobulk:
+    celltype_label: "celltype.mapped_mnn"
+
+plot_celltype_proportions:
+    celltype_label: "celltype.mapped_mnn"
+    # celltype_label: ["celltype.mapped_seurat","celltype.mapped_mnn"]
+
+infer_trajectories:
+    # trajectory_name: ["blood", "ectoderm", "endoderm", "mesoderm"]
+    trajectory_name: ["blood"]
+    celltype_label: "celltype.mapped_mnn"
+
+# coexpression_TF_vs_gene_trajectories
+
+###########
+## Slurm ##
+###########
+
+slurm:  # memory in MB
+    create_seurat: 
+        memory: 50000
+        threads: 1
+    qc: 
+        memory: 3000
+        threads: 1
+    seurat_to_sce:
+        memory: 50000
+        threads: 1
+    doublet_detection:
+        memory: 25000
+        threads: 1
+    parse_doublet_results:
+        memory: 2000
+        threads: 1
+    pseudobulk_rna:
+        memory: 15000
+        threads: 1
+    mapping_mnn:
+        memory: 50000
+        threads: 1
+    mapping_mnn_all_samples:
+        memory: 50000
+        threads: 1
+    mapping_seurat:
+        memory: 150000
+        threads: 1
+    mapping_seurat_all_samples:
+        memory: 150000
+        threads: 1
+    parse_mapping_results:
+        memory: 2000
+        threads: 1
+    dimensionality_reduction_sce:
+        memory: 20000
+        threads: 1
+    dimensionality_reduction_seurat:
+        memory: 50000
+        threads: 1
+    celltype_validation_single_cells:
+        memory: 15000
+        threads: 1
+    celltype_validation_pseudobulk:
+        memory: 3000
+        threads: 1
+    plot_mapping_results:
+        memory: 3000
+        threads: 1
+    plot_celltype_proportions:
+        memory: 3000
+        threads: 1
+    infer_trajectories:
+        memory: 10000
+        threads: 1
+    coexpression_TF_vs_gene_single_cells:
+        memory: 35000
+        threads: 1
+    coexpression_TF_vs_gene_single_cells_denoised:
+        memory: 150000
+        threads: 1
+    coexpression_TF_vs_gene_pseudobulk:
+        memory: 5000
+        threads: 1
+
+
+        

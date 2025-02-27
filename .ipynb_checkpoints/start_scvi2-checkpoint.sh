@@ -1,0 +1,13 @@
+#!/bin/bash
+eval "$(conda shell.bash hook)"
+conda activate env_scvi2
+sbatch notebook_env.sh
+job_id=$(squeue -u bt392 | awk '{print $1}' | sed -n 2p)
+
+while  [ "$(squeue -u bt392 | awk '{print $5}' | sed -n 2p)" != "R" ]
+do
+  sleep 1
+done
+
+sleep 4
+cat /rds/project/rds-SDzz0CATGms/users/bt392/logs/jupyter_log.txt | head -n 10

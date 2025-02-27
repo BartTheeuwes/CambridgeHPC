@@ -1,0 +1,164 @@
+samples:
+    - E7.5_rep1
+    - E7.5_rep2
+    # - E8.0_rep1
+    # - E8.0_rep2
+    # - E8.5_rep1
+    # - E8.5_rep2
+    # - E8.75_rep1
+    # - E8.75_rep2
+
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /Users/argelagr/data/gastrulation_multiome_10x
+    original_data: /Users/argelagr/data/gastrulation_multiome_10x/original
+    processed_data: /Users/argelagr/data/gastrulation_multiome_10x/processed/rna_new
+    results: /Users/argelagr/data/gastrulation_multiome_10x/results_new
+    atlas: /Users/argelagr/data/gastrulation10x
+
+###############
+## Resources ##
+###############
+
+resources:
+    marker_genes: /Users/argelagr/data/gastrulation10x/results/marker_genes/all_stages/marker_genes.txt.gz
+    umap: "/Users/argelagr/data/gastrulation_multiome_10x/results/rna/dimensionality_reduction/seurat/umap_features1000_pcs30_neigh25_dist0.3.txt.gz"
+    celltypes: ["Epiblast", "Primitive_Streak", "Caudal_epiblast", "PGC", "Anterior_Primitive_Streak", "Notochord", "Def._endoderm", "Gut", "Nascent_mesoderm", "Mixed_mesoderm", "Intermediate_mesoderm", "Caudal_Mesoderm", "Paraxial_mesoderm", "Somitic_mesoderm", "Pharyngeal_mesoderm", "Cardiomyocytes", "Allantois", "ExE_mesoderm", "Mesenchyme", "Haematoendothelial_progenitors", "Endothelium", "Blood_progenitors_1", "Blood_progenitors_2", "Erythroid1", "Erythroid2", "Erythroid3", "NMP", "Rostral_neurectoderm", "Caudal_neurectoderm", "Neural_crest", "Forebrain_Midbrain_Hindbrain", "Spinal_cord", "Surface_ectoderm", "Visceral_endoderm", "ExE_endoderm", "ExE_ectoderm", "Parietal_endoderm"]
+    stages: ["E7.5","E8.0","E8.5","E8.75"]
+
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_seurat: ../processing/1_create_seurat_rna.R
+    qc: ../processing/2_QC.R
+    seurat_to_sce: ../processing/3_seurat_to_SCE.R
+    doublet_detection: ../processing/4_doublet_detection.R
+    parse_doublets: ../processing/5_parse_sample_metadata_after_doublets.R
+    mapping_mnn: ../mapping/run/mnn/mapping_mnn.R
+    mapping_seurat: ../mapping/run/seurat/mapping_seurat.R
+    parse_mapping: ../mapping/run/parse_sample_metadata_after_mapping.R
+    dimensionality_reduction: ../dimensionality_reduction/dimensionality_reduction_sce.R
+    dimensionality_reduction_seurat: ../dimensionality_reduction/dimensionality_reduction_seurat.R
+    pseudobulk_rna: ../pseudobulk/pseudobulk_rna.R
+    celltype_validation_single_cells: ../celltype_validation/celltype_validation_single_cells.R
+    celltype_validation_pseudobulk: ../celltype_validation/celltype_validation_pseudobulk.R
+    plot_mapping_results: ../mapping/analysis/plot_mapping_umap.R
+    plot_celltype_proportions: ../celltype_proportions/plot_celltype_proportions.R
+
+
+################
+## Parameters ##
+################
+
+pseudobulk_rna:
+    # group_by: ["sample", "celltype.mapped_mnn", "celltype.mapped_seurat"]
+    group_by: ["celltype.mapped_mnn", "celltype.mapped_seurat"]
+    normalisation_method: "cpm"
+    
+doublet_detection:
+    doublet_score_threshold: 1.50
+
+mapping_mnn:
+    atlas_stages: ["E6.5","E6.75","E7.0","E7.25","E7.5","E7.75","E8.0","E8.25","E8.5"]
+    npcs: 50
+    n_neighbours: 25
+
+mapping_seurat:
+    atlas_stages: ["E6.5","E6.75","E7.0","E7.25","E7.5","E7.75","E8.0","E8.25","E8.5"]
+    npcs: 50
+    n_neighbours: 25
+
+qc:
+    min_nFeature_RNA: 500
+    max_nFeature_RNA: 8000
+    percent_mt: 10
+    percent_rib: 10
+    
+dimensionality_reduction:
+    npcs: 30
+    features: 1000
+    n_neighbors: 25
+    min_dist: 0.3
+    colour_by: ["sample", "celltype.mapped_mnn", "celltype.mapped_seurat", "doublet_score", "doublet_call"]
+
+dimensionality_reduction_seurat:
+    npcs: 30
+    features: 1000
+    n_neighbors: 25
+    min_dist: 0.3
+    seed: 42
+    vars_to_regress: ["nFeature_RNA","mitochondrial_percent_RNA"]
+    colour_by: ["sample", "celltype.mapped_mnn", "celltype.mapped_seurat", "doublet_score", "doublet_call"]
+
+celltype_validation_single_cells:
+    umap: "..."
+    celltype_label: "celltype.mapped_seurat"
+
+celltype_validation_pseudobulk:
+    umap: "..."
+    celltype_label: "celltype.mapped_seurat"
+
+plot_celltype_proportions:
+    celltype_label: "celltype.mapped_seurat"
+    # celltype_label: ["celltype.mapped_seurat","celltype.mapped_mnn"]
+
+
+# plot_mapping_results
+
+###########
+## Slurm ##
+###########
+
+slurm:  # memory in GB
+    create_seurat: 
+        memory: 10
+        threads: 1
+    qc: 
+        memory: 2
+        threads: 1
+    seurat_to_sce:
+        memory: 12
+        threads: 1
+    doublet_detection:
+        memory: 6
+        threads: 1
+    parse_doublet_results:
+        memory: 2
+        threads: 1
+    pseudobulk_rna:
+        memory: 10
+        threads: 1
+    mapping_mnn:
+        memory: 30
+        threads: 1
+    mapping_seurat:
+        memory: 100
+        threads: 1
+    parse_mapping_results:
+        memory: 2
+        threads: 1
+    dimensionality_reduction:
+        memory: 10
+        threads: 1
+    dimensionality_reduction_seurat:
+        memory: 10
+        threads: 1
+    celltype_validation_single_cells:
+        memory: 5
+        threads: 1
+    celltype_validation_pseudobulk:
+        memory: 2
+        threads: 1
+    plot_mapping_results:
+        memory: 2
+        threads: 1
+    plot_celltype_proportions:
+        memory: 2
+        threads: 1
+

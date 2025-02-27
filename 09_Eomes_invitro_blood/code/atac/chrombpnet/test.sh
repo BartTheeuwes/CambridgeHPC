@@ -1,0 +1,2 @@
+sbatch run_chrombpnet_args.sh Primitive_Streak
+sbatch run_chrombpnet_args.sh Early_Mes_EOi

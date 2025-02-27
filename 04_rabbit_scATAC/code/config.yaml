@@ -1,0 +1,97 @@
+samples:
+    - BGRGP1
+    - BGRGP2
+    - BGRGP3
+    - BGRGP4
+    - BGRGP5
+    - BGRGP6
+    - BGRGP7
+    - BGRGP8
+  
+    
+stages:
+    - GD7
+    - GD8
+    - GD9
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /rds/project/rds-SDzz0CATGms/users/bt392/04_rabbit_scATAC
+    original_data: /rds/project/rds-SDzz0CATGms/users/bt392/04_rabbit_scATAC/data
+    processed_data: /rds/project/rds-SDzz0CATGms/users/bt392/04_rabbit_scATAC/ArchR
+    results: /rds/project/rds-SDzz0CATGms/users/bt392/04_rabbit_scATAC/results
+
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_arrow_files: 01_create_arrow.R
+    create_archr_project: 02_create_archr_project.R
+    qc_archr: 03_QC.R
+    dimensionality_reduction: 04_dimensionality_reduction.R
+    
+################
+## Parameters ##
+################
+
+create_arrow_files:
+    min_fragments: 3000 
+    min_tss_score: 2
+qc_archr:
+    min_log_nFrags: 12
+    min_tss_score: 2
+dimensionality_reduction_Tile:
+    matrix: "TileMatrix"
+    ndims: 30
+    nfeatures: 15000
+    n_neighbors: 25
+    min_dist: 0.3
+    colour_by: ["sample","predictedGroup_celltype"]
+dimensionality_reduction_Tile_final:
+    ndims: 30
+    nfeatures: 15000
+    n_neighbors: 25
+    min_dist: 0.3
+    final_run: 1
+    colour_by: ["sample","stage", "predictedGroup_celltype", "doublet_call", "nFrags_atac"]
+    
+    
+dimensionality_reduction_Peak:
+    matrix: "PeakMatrix"
+    ndims: 30
+    nfeatures: 15000
+    n_neighbors: 25
+    min_dist: 0.3
+    colour_by: ["sample","predictedGroup_celltype"]
+dimensionality_reduction_Peak_final:
+    ndims: 30
+    nfeatures: 15000
+    n_neighbors: 25
+    min_dist: 0.3
+    final_run: 1
+    colour_by: ["sample","stage", "predictedGroup_celltype", "doublet_call", "nFrags_atac"]
+    
+###########
+## Slurm ##
+###########
+
+slurm:  # memory in MB
+    create_arrow_files: 
+        threads: 16
+        memory: 32000
+    create_archr_project:
+        threads: 16
+        memory: 64000
+    qc_archr: 
+        threads: 1
+        memory: 1000
+    dimensionality_reduction_Tile:
+        threads: 1
+        memory: 1000
+    dimensionality_reduction_Tile_final:
+        threads: 1
+        memory: 1000        

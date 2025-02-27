@@ -1,0 +1,1 @@
+cp /rfs/project/rfs-jlyrZBLdWBU/Sequencing_raw_data/Gottgens/SLX22185/* .

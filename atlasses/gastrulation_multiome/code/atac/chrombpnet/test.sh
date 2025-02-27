@@ -1,0 +1,11 @@
+sbatch run_chrombpnet_args.sh Gut
+sbatch run_chrombpnet_args.sh Mesenchyme
+sbatch run_chrombpnet_args.sh Primitive_Streak
+sbatch run_chrombpnet_args.sh Nascent_mesoderm
+sbatch run_chrombpnet_args.sh Forebrain_Midbrain_Hindbrain
+sbatch run_chrombpnet_args.sh Somitic_mesoderm
+sbatch run_chrombpnet_args.sh Spinal_cord
+sbatch run_chrombpnet_args.sh Endothelium
+sbatch run_chrombpnet_args.sh Allantois
+sbatch run_chrombpnet_args.sh Cardiomyocytes
+sbatch run_chrombpnet_args.sh Erythroid1

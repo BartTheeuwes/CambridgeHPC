@@ -1,0 +1,232 @@
+here::i_am("rna_atac/gene_regulatory_networks/pseudobulk/predict_perturbations/GRN_TAL1.R")
+
+#####################
+## Define settings ##
+#####################
+
+# load default setings
+
+source(here::here("settings.R"))
+source(here::here("utils.R"))
+
+# I/O
+io$grn <- file.path(io$basedir,"results_new/rna_atac/gene_regulatory_networks/pseudobulk/test/global_chip_GRN_coef.txt.gz")
+io$tal1.diff_expr <- "/Users/argelagr/data/10x_gastrulation_Tal1_Chimera/results/differential/pseudobulk/DE_pseudobulk.txt.gz"
+
+# Options
+
+opts$celltypes = c(
+  "Epiblast",
+  "Primitive_Streak",
+  "Caudal_epiblast",
+  # "PGC",
+  # "Anterior_Primitive_Streak",
+  "Notochord",
+  "Def._endoderm",
+  "Gut",
+  "Nascent_mesoderm",
+  "Mixed_mesoderm",
+  "Intermediate_mesoderm",
+  "Caudal_Mesoderm",
+  "Paraxial_mesoderm",
+  "Somitic_mesoderm",
+  "Pharyngeal_mesoderm",
+  "Cardiomyocytes",
+  "Allantois",
+  "ExE_mesoderm",
+  "Mesenchyme",
+  "Haematoendothelial_progenitors",
+  "Endothelium",
+  "Blood_progenitors_1",
+  "Blood_progenitors_2",
+  "Erythroid1",
+  "Erythroid2",
+  "Erythroid3",
+  "NMP",
+  "Rostral_neurectoderm",
+  # "Caudal_neurectoderm",
+  "Neural_crest",
+  "Forebrain_Midbrain_Hindbrain",
+  "Spinal_cord",
+  "Surface_ectoderm"
+  # "Visceral_endoderm",
+  # "ExE_endoderm",
+  # "ExE_ectoderm",
+  # "Parietal_endoderm"
+)
+
+opts$aggregated.celltypes <- c(
+  "Erythroid1" = "Erythroid",
+  "Erythroid2" = "Erythroid",
+  "Erythroid3" = "Erythroid",
+  "Blood_progenitors_1" = "Blood_progenitors",
+  "Blood_progenitors_2" = "Blood_progenitors",
+  "Rostral_neurectoderm" = "Neurectoderm",
+  "Caudal_neurectoderm" = "Neurectoderm",
+  "Anterior_Primitive_Streak" = "Primitive_Streak"
+)
+
+#######################
+## Load marker genes ##
+#######################
+
+marker_genes.dt <- fread(io$rna.atlas.marker_genes) %>%
+  .[celltype%in%opts$celltypes] %>%
+  .[,celltype:=stringr::str_replace_all(celltype,opts$aggregated.celltypes)] %>%
+  .[,c("celltype","gene")] %>% unique
+
+##################################
+## Load gene regulatory network ##
+##################################
+
+GRN.dt <- fread(io$grn) %>% .[tf=="TAL1" & pvalue<=0.05] %>% .[gene%in%corr.genes]
+
+predicted_upregulated.genes <- GRN.dt[beta<=(-0.05),gene]
+predicted_downregulated.genes <- GRN.dt[beta>0.05,gene]
+
+################################
+## Load DE genes from TAL1 KO ##
+################################
+
+diff_rna.dt <- fread(io$tal1.diff_expr) 
+
+diff_rna_filt.dt <- diff_rna.dt %>% 
+  .[abs(diff)>=0.5]
+
+# tmp <- diff_rna.dt[celltype=="Haematoendothelial_progenitors",gene]
+
+# diff_rna.dt$gene %in% predicted_upregulated.genes
+# diff_rna.dt$gene %in% predicted_downregulated.genes
+
+predicted_downregulated.genes[!predicted_downregulated.genes%in%diff_rna_filt.dt$gene]
+
+############################################
+## Plot number of well-predicted DE genes ##
+############################################
+
+foo <- data.table(
+  class = "TAL1_network",
+  sign = c("downregulated","upregulated"),
+  value = c(mean(predicted_downregulated.genes%in%diff_rna_filt.dt$gene), mean(predicted_upregulated.genes%in%diff_rna_filt.dt$gene))
+  # value = c(mean(diff_rna.dt$gene%in%predicted_downregulated.genes), mean(diff_rna.dt$gene%in%predicted_upregulated.genes))
+)
+
+ggbarplot(foo, x="sign", y="value", fill="sign", stat="identity") +
+  labs(x="", y="Fraction of correctly predicted DE genes") +
+  coord_cartesian(ylim=c(0,1)) +
+  theme(
+    axis.text.y = element_text(size=rel(0.75)),
+    legend.position = "none"
+  )
+
+
+##########################################
+## Plot network with the logFC per gene ##
+##########################################
+
+tf2gene_filt.mtx <- tf2gene.mtx[tf2gene.mtx>=0]
+
+# Prepare data
+node_list.dt <- data.table(node_id=1, node_name="TAL1")
+target_list.dt <- data.table(target_id=1:length(tf2gene_filt.mtx), target_name=names(tf2gene_filt.mtx))
+
+edge_list.dt <- data.table(from="TAL1", to=names(tf2gene_filt.mtx), weight=tf2gene_filt.mtx)
+
+node_list_metadata.dt <- data.table(
+  label = c(node_list.dt$node_name, target_list.dt$target_name),
+  class = c(rep("TF",nrow(node_list.dt)), rep("gene",nrow(target_list.dt)))
+)
+
+net <- graph_from_data_frame(d = edge_list.dt, vertices = node_list_metadata.dt)
+
+# Define groups
+V(net)$group <- factor(V(net)$class, levels=c("TF","gene"))
+
+# Define colors
+pal <- grDevices::colorRamp(c("gray80", "purple"))( (1:100)/100 )
+tmp <- diff_rna.dt[gene%in%c("Tal1",names(tf2gene_filt.mtx))] %>% setkey(gene) %>% .[str_to_title(names(V(net)))]
+tmp[,abs_logFC:=abs(logFC)] %>% .[abs_logFC>=8,abs_logFC:=8]
+V(net)$color <- colourvalues::colour_values(tmp$abs_logFC, palette = pal)
+
+# Create network layout
+set.seed(42)
+layout <- layout.sphere(net)
+
+# Plot
+ggnet2(
+  mode = layout, 
+  net = net,
+  color = V(net)$color,
+  node.size = c(8,20)[factor(V(net)$class)],
+  label = TRUE,
+  label.color = "black",
+  label.size = c(3,5)[factor(V(net)$class)],
+  arrow.size = 0.1,
+  legend.position = "none"
+) 
+
+
+####################
+## Cell fate bias ##
+####################
+
+to.plot <- GRN.dt %>% 
+  merge(marker_genes.dt[,c("gene","celltype")] %>% setnames("celltype","celltype_marker"), by = c("gene"), allow.cartesian=TRUE) %>%
+  .[,sign :=c("-","+")[as.numeric(beta>0)+1]] %>%
+  .[,.N, by=c("celltype_marker","sign","tf")] %>% 
+  .[,value:=minmax.normalisation(N),by=c("tf","sign")]
+
+ggplot(to.plot[sign=="+"], aes(x=factor(tf), y=N)) +
+  geom_bar(aes(fill = celltype_marker), color="black", stat="identity") + 
+  # facet_wrap(~sign, scales="free_y") +
+  scale_fill_manual(values=opts$celltype.colors, drop=F) +
+  labs(x="", y="Number of DE genes (scaled)") +
+  theme_classic() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "none",
+  )
+
+# ggplot(to.plot[sign=="-"], aes(x=factor(tf), y=N)) +
+#   geom_bar(aes(fill = celltype_marker), color="black", stat="identity") + 
+#   facet_wrap(~sign, scales="free_y",nrow=2) +
+#   scale_fill_manual(values=opts$celltype.colors, drop=F) +
+#   labs(x="", y="Number of predicted DE genes") +
+#   theme_classic() +
+#   theme(
+#     axis.text.x = element_blank(),
+#     axis.ticks.x = element_blank(),
+#     legend.position = "none"
+#   )
+
+
+
+#############
+## Explore ##
+#############
+
+sce.multiome <- readRDS("/Users/argelagr/data/gastrulation_multiome_10x/results_new/rna/pseudobulk/SingleCellExperiment_pseudobulk_celltype.mapped_mnn.rds")
+sce.tal1 <- readRDS("/Users/argelagr/data/10x_gastrulation_Tal1_Chimera/results/pseudobulk/SingleCellExperiment_pseudobulk_celltype.mapped.rds")
+
+celltypes <- intersect(colnames(sce.multiome),colnames(sce.tal1))
+genes <- intersect(GRN.dt$gene,rownames(sce.multiome))
+
+sce.multiome <- sce.multiome[genes,celltypes]
+sce.tal1 <- sce.tal1[genes,celltypes]
+
+corr <- cor(t(logcounts(sce.multiome)),t(logcounts(sce.tal1))) %>% diag
+corr.genes <- which(corr>0.40) %>% names
+
+predicted_downregulated.genes[!predicted_downregulated.genes%in%diff_rna_filt.dt$gene]
+
+corr["Kif2a"]
+
+tmp <- data.table(
+  x = logcounts(sce)["Tal1",],
+  y = logcounts(sce)["Kif2a",]
+)
+cor(tmp$x,tmp$y)
+plot(tmp$x,tmp$y)
+coef(lm(y~x, data=tmp))
+summary(lm(y~x, data=tmp))$coefficients[,4]
+

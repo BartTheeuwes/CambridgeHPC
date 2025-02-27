@@ -1,0 +1,41 @@
+name: env_rabbit
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.9.5
+  - mamba
+  - r-base
+  - ca-certificates
+  - certifi
+  - openssl
+  - bioconductor-singlecellexperiment
+  - bioconductor-scds
+  - bioconductor-scran
+  - bioconductor-scater
+  - bioconductor-batchelor
+  - r-ggpubr
+  - r-seurat
+  - bioconductor-isee
+  - bioconductor-rsamtools
+  - bioconductor-genomicalignments
+  - bioconductor-rtracklayer
+  - future
+  - snakemake
+  - jupyterlab
+  - r-irkernel
+  - r-r.utils
+  - r-ggrastr
+  - r-devtools
+  - r-biocmanager
+  - parallel
+  - r-harmony
+  - bioconductor-dropletutils
+  - bioconductor-biomart
+  - bioconductor-chromvar
+  - macs2
+  - deeptools
+  - bioconductor-slingshot
+  - r-monocle3
+prefix: /home/bt392/miniconda3/envs/env_rabbit

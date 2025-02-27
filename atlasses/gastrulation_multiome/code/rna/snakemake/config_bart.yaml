@@ -1,0 +1,39 @@
+samples:
+    - E8.75_rep2
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /bi/group/reik/ricard/data/gastrulation_multiome_10x
+    original_data: /bi/group/reik/ricard/data/gastrulation_multiome_10x/original
+    processed_data: /bi/group/reik/ricard/data/gastrulation_multiome_10x/processed_new/rna
+    results: /bi/group/reik/ricard/data/gastrulation_multiome_10x/results_new
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_seurat: ../processing/1_create_seurat_rna.R
+    qc: ../processing/2_QC.R
+
+
+################
+## Parameters ##
+################
+
+qc:
+    min_nFeature_RNA: 2000
+    max_nFeature_RNA: 10000
+    percent_mt: 40
+    percent_rib: 20
+
+slurm:  # memory in MB
+    create_seurat: 
+        memory: 50000
+        threads: 1
+
+    qc: 
+        memory: 3000
+        threads: 1

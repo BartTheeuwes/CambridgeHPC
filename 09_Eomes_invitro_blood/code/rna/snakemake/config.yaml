@@ -1,0 +1,191 @@
+######################
+## Global variables ##
+######################
+
+samples:
+    - rv_eo_deg_day3_5_control
+    - rv_eo_deg_day3_5_dtag
+    - rv_eo_deg_day4_5_control
+    - rv_eo_deg_day4_5_dtag
+    - rv_eo_deg_day4_control
+    - rv_eo_deg_day4_dtag
+    - 1A_Eo_DEG_G9_day3
+    - 1B_Eo_DEG_G9_day3
+    - 2_Eo_DEG_G9_day3_5_dTAG
+    - 2_Eo_DEG_G9_day3_5_VC
+    - 2_Eo_DEG_G9_day4_dTAG
+    - 2_Eo_DEG_G9_day4_VC
+    - 2_Eo_DEG_G9_day5_dTAG
+    - 2_Eo_DEG_G9_day5_VC
+
+atlas_stages: ["E7.5","E7.75","E8.0","E8.5","E8.75"]
+days: ["D3","D3.5","D4","D4.5","D5"]
+celltypes: ["Epiblast", "Primitive_Streak", "Caudal_epiblast", "PGC", "Anterior_Primitive_Streak", "Notochord", "Def._endoderm", "Gut", "Nascent_mesoderm", "Mixed_mesoderm", "Intermediate_mesoderm", "Caudal_Mesoderm", "Paraxial_mesoderm", "Somitic_mesoderm", "Pharyngeal_mesoderm", "Cardiomyocytes", "Allantois", "ExE_mesoderm", "Mesenchyme", "Haematoendothelial_progenitors", "Endothelium", "Blood_progenitors_1", "Blood_progenitors_2", "Erythroid1", "Erythroid2", "Erythroid3", "NMP", "Rostral_neurectoderm", "Caudal_neurectoderm", "Neural_crest", "Forebrain_Midbrain_Hindbrain", "Spinal_cord", "Surface_ectoderm", "Visceral_endoderm", "ExE_endoderm", "ExE_ectoderm", "Parietal_endoderm"]
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood
+    original_data: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/original
+    processed_data: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/processed/rna
+    results: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/results
+    atlas: /rds/project/rds-SDzz0CATGms/users/bt392/atlasses/gastrulation/pijuansala2019_gastrulation10x
+    multiome_atlas: /rds/project/rds-SDzz0CATGms/users/bt392/05_gastrulation_multiome_10x/original
+
+###############
+## Resources ##
+###############
+
+resources:
+    python: /home/bt392/miniconda3/envs/env_multiome/bin/python
+    #marker_genes: /rds/project/rds-SDzz0CATGms/users/bt392/atlasses/gastrulation/pijuansala2019_gastrulation10x/results/marker_genes/all_stages/marker_genes.txt.gz
+    marker_genes: /rds/project/rds-SDzz0CATGms/users/bt392/atlasses/gastrulation_multiome/results/rna/differential/cells/celltype/marker_genes/marker_genes_all.txt.gz
+    TFs_file: "/rds/project/rds-SDzz0CATGms/users/bt392/atlasses/TFs.txt"
+    cell_metadata: "/bi/group/reik/ricard/data/gastrulation_multiome_10x/results/atac/archR/celltype_assignment/sample_metadata_after_celltype_assignment.txt.gz"
+    mm10_mask: /rds/project/rds-SDzz0CATGms/users/bt392/atlasses/mm10_rmsk.gtf
+    genes_gtf: /rds/project/rds-SDzz0CATGms/references/10x/refdata-cellranger-arc-mm10-2020-A-2.0.0/genes.gtf
+
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_seurat: ../processing/1_create_seurat_rna.R
+    merge_seurat: ../processing/1_merge_seurat_objects.R
+    qc: ../processing/2_QC.R
+    seurat_to_sce: ../processing/3_seurat_to_SCE.R
+    doublet_detection: ../processing/4_doublet_detection.R
+    #doublet_detection: ../processing/4_doublet_detection_single.R
+    parse_doublets: ../processing/5_parse_sample_metadata_after_doublets.R
+    mapping_mnn: ../mapping/run/mnn/mapping_mnn.R
+    # mapping_seurat: ../mapping/run/seurat/mapping_seurat.R
+    convert_SingleCellExperiment_to_anndata: ../conversions/convert_SingleCellExperiment_to_anndata.R
+    plot_mapping_results: ../mapping/analysis/plot_mapping_umap.R
+    parse_mapping: ../mapping/run/parse_sample_metadata_after_mapping.R
+    dimensionality_reduction_sce: ../dimensionality_reduction/dimensionality_reduction_sce.R
+    dimensionality_reduction_seurat: ../dimensionality_reduction/dimensionality_reduction_seurat.R
+    plot_celltype_proportions: ../celltype_proportions/plot_celltype_proportions.R
+    pseudobulk_rna: ../pseudobulk/pseudobulk_rna.R
+    pseudobulk_rna_with_replicates: ../pseudobulk/pseudobulk_rna_with_replicates.R
+    celltype_validation_single_cells: ../celltype_validation/celltype_validation_single_cells.R
+    # celltype_validation_pseudobulk: ../celltype_validation/celltype_validation_pseudobulk.R
+    # coexpression_TF_vs_gene_single_cells: ../TF2gene_coexpression/coexpression_TF_vs_gene_single_cells.R
+    # coexpression_TF_vs_gene_pseudobulk: ../TF2gene_coexpression/coexpression_TF_vs_gene_pseudobulk.R
+
+
+################
+## Parameters ##
+################
+
+create_seurat:
+    min_reads: 1000
+
+qc:
+    min_nCount_RNA: 3 # logscale (=1000 reads)
+    max_nCount_RNA: 5 
+    min_nFeature_RNA: 2500
+    max_nFeature_RNA: 12000
+    percent_mt: 25
+    percent_rib: 30
+
+doublet_detection:
+    doublet_score_threshold: 1.25
+
+pseudobulk_rna:
+    group_by: ["celltype.mapped_mnn", "celltype_extended.mapped_mnn", "celltype_genotype","celltype_extended_genotype"]
+
+pseudobulk_rna_with_replicates:
+    nrep: 5
+    min_cells: 25
+    fraction_cells_per_replicate: 0.30
+
+mapping_mnn:
+    atlas_stages: ["E6.5","E6.75","E7.0","E7.25","E7.5","E7.75","E8.0","E8.25","E8.5"]
+    npcs: 50
+    n_neighbours: 25
+    
+dimensionality_reduction_sce:
+    npcs: [15, 20, 25]
+    features: [1500, 2000, 2500]
+    n_neighbors: 25
+    min_dist: 0.3
+    vars_to_regress: ['nFeature_RNA', 'nCount_RNA', 'mitochondrial_percent_RNA', 'ribosomal_percent_RNA'] # , 'mitochondrial_percent_RNA', 'ribosomal_percent_RNA'
+    batch_correction: ['sample', 'replicate', 'day', 'day_sample', 'none']
+    colour_by: ["sample", "day", "celltype.mapped_mnn", "celltype_extended.mapped_mnn", "doublet_score", "celltype.score_mnn", "celltype_extended.score_mnn", "nFeature_RNA", "genotype", "replicate"]
+
+celltype_validation_single_cells:
+    umap: "..."
+    celltype_label: ["celltype.mapped_mnn", "celltype_extended.mapped_mnn"]
+
+celltype_validation_pseudobulk:
+    celltype_label: "celltype"
+
+plot_celltype_proportions:
+    celltype_label: ["celltype.mapped_mnn", "celltype_extended.mapped_mnn"]
+    # celltype_label: ["celltype.mapped_seurat","celltype"]
+
+
+###########
+## Slurm ##
+###########
+
+slurm:  # memory in MB
+    create_seurat: 
+        memory: 50000
+        threads: 10
+    qc: 
+        memory: 3000
+        threads: 10
+    seurat_to_sce:
+        memory: 25000
+        threads: 10
+    doublet_detection:
+        memory: 25000
+        threads: 16
+    parse_doublet_results:
+        memory: 2000
+        threads: 1
+    pseudobulk_rna:
+        memory: 15000
+        threads: 10
+    pseudobulk_rna_with_replicates:
+        memory: 25000
+        threads: 10
+    mapping_mnn:
+        memory: 50000
+        threads: 10
+    mapping_seurat:
+        memory: 120000
+        threads: 10
+    parse_mapping_results:
+        memory: 2000
+        threads: 1
+    dimensionality_reduction_sce:
+        memory: 40000
+        threads: 24
+    dimensionality_reduction_seurat:
+        memory: 30000
+        threads: 10
+    celltype_validation_single_cells:
+        memory: 10000
+        threads: 1
+    # celltype_validation_pseudobulk:
+    #     memory: 3000
+    #     threads: 1
+    plot_mapping_results:
+        memory: 3000
+        threads: 1
+    plot_celltype_proportions:
+        memory: 3000
+        threads: 1
+    # coexpression_TF_vs_gene_single_cells:
+    #     memory: 25000
+    #     threads: 1
+    # coexpression_TF_vs_gene_pseudobulk:
+    #     memory: 5000
+    #     threads: 1
+    convert_SingleCellExperiment_to_anndata:
+        memory: 45000
+        threads: 10

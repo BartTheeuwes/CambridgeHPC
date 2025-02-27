@@ -1,0 +1,246 @@
+library(GenomicRanges)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(motifmatchr)
+
+#####################
+## Define settings ##
+#####################
+
+# Load default settings
+source(here::here("settings.R"))
+source(here::here("utils.R"))
+
+# Options
+opts$motif_annotation <- "CISBP"
+opts$TFs <- "FOXA2"
+
+# I/O
+io$basedir <- file.path(io$basedir,"test")
+io$chip_dir.prefix <- "/Users/argelagr/data/mm10_regulation/TF_ChIP"
+io$peak_annotation_file <- file.path(io$basedir,"processed/atac/archR/Annotations/peakAnnotation.rds")
+io$virtual_chip.dir <- file.path(io$basedir,sprintf("results/rna_atac/virtual_chipseq/pseudobulk/%s",opts$motif_annotation))
+io$motif2gene <- file.path(io$basedir,sprintf("processed/atac/archR/Annotations/%s_motif2gene.txt.gz",opts$motif_annotation))
+io$chip_peaks.files <- c(
+  "FOXA2_new" = file.path(io$chip_dir.prefix, "FOXA2_ESC_endoderm_differentiation/fastq/Foxa2_d5FS_macs2_broad/Foxa2_d5FS_peaks.broadPeak"),
+  "FOXA2_old" = file.path(io$chip_dir.prefix, "FOXA2_ESC_endoderm_differentiation/original/old/macs2/foxa2_chip_peaks.narrowPeak.gz")
+)
+
+###############
+## Load data ##
+###############
+
+# Load PWMs
+pwms <- readRDS(io$peak_annotation_file)[[opts$motif_annotation]][["motifs"]]
+
+# Load motif annotation
+motif2gene.dt <- fread(io$motif2gene)
+
+# Load ChIP-seq peak calling results
+# (TO-DO: EXTEND PEAKS???)
+chip.dt <- names(io$chip_peaks.files) %>% map(function(i) {
+ fread(io$chip_peaks.files[[i]], select=c(1,2,3,5)) %>%
+  setnames(c("chr","start","end","score")) %>%
+  .[,chr:=ifelse(grepl("chr",chr),chr,paste0("chr",chr))] %>%
+  .[!chr%in%c("chrM","chrMT")] %>%
+  .[,id:=sprintf("%s:%s-%s",chr,start,end)] %>%
+  # .[score>=opts$min_chip_score] %>% 
+  setorder(-score) %>% head(n=1000) %>% # We consider the top N ChIP-seq peaks for each sample
+  .[,chip:=i] %>%
+    return
+}) %>% rbindlist %>% setkey(chr,start,end)
+
+chip.dt[,TF:="FOXA2"]
+
+chip.dt[,.N,by="chip"]
+
+# Load virtual ChIP-seq
+chip_insilico.dt <- opts$TFs %>% map(function(i) {
+  fread(sprintf("%s/%s.bed.gz",io$virtual_chip.dir,i)) %>%
+    setnames(c("chr","start","end","score")) %>%
+    .[,id:=sprintf("%s:%s-%s",chr,start,end)] %>%
+    .[score>=0] %>%
+    .[,tf:=i] %>%
+    return
+}) %>% rbindlist %>% setkey(chr,start,end)
+
+##################
+## Prepare data ##
+##################
+
+# Rename TFs
+# names(pwms)
+motif2gene_filt.dt <- motif2gene.dt[gene%in%opts$TFs]
+tmp <- motif2gene_filt.dt$gene; names(tmp) <- motif2gene_filt.dt$motif
+pwms <- pwms[names(pwms)%in%motif2gene_filt.dt$motif]
+names(pwms) <- tmp[names(pwms)]
+
+###################################################
+## Find ChIP-seq peaks that contain the TF motif ##
+###################################################
+
+# i <- "GATA1"
+
+chip_peaks_with_motif.dt <- names(io$chip_peaks.files) %>% map(function(i) {
+  
+  gr <- makeGRangesFromDataFrame(chip.dt[chip==i], keep.extra.columns = T)
+  
+  motifmatcher.se <- motifmatchr::matchMotifs(
+    pwms = pwms["FOXA2"],
+    subject = gr,
+    genome = BSgenome.Mmusculus.UCSC.mm10, 
+    out = "matches", 
+    p.cutoff = 0.001, 
+    w = 7
+  ); rownames(motifmatcher.se) <- gr$id
+  
+  peaks.with.motif <- names(which(assay(motifmatcher.se)[,1]))
+  return(chip.dt[chip==i & id%in%peaks.with.motif])
+  
+}) %>% rbindlist %>% setkey(chr,start,end)
+
+###############################
+## Plot TF motif specificity ##
+###############################
+
+foo <- chip_peaks_with_motif.dt[,.N,by="chip"] %>% setnames("N","peaks_with_motif")
+bar <- chip.dt[,.N,by="chip"] %>% setnames("N","total_peaks")
+
+to.plot <- merge(foo,bar,by="chip") %>% 
+  .[,percentage_peaks_motif:=peaks_with_motif/total_peaks]# %>%
+  # melt(id.vars="chip",value.name="N")
+
+ggbarplot(to.plot, x="chip", y="percentage_peaks_motif", fill="gray70") +
+  geom_hline(yintercept=1, linetype="dashed") +
+  labs(x="", y="% of peaks with TF motif") +
+  theme(
+    axis.text.y = element_text(size=rel(0.75))
+  )
+
+##############
+## Plot ROC ##
+#############
+
+# Define range of binding scores
+# seq.ranges <- seq(0,max(chip_insilico.dt$score)-0.05,by=0.01)
+seq.ranges <- seq(0,0.50,by=0.01)
+names(seq.ranges) <- as.character(1:length(seq.ranges))
+
+# ov.dt <- foverlaps(chip_insilico.dt, chip.dt) %>% setnames("i.score","insilico_score")
+
+roc.dt <- names(io$chip_peaks.files) %>% map(function(i) {
+  
+  ov.dt <- foverlaps(chip_insilico.dt[tf=="FOXA2"], chip_peaks_with_motif.dt[chip==i]) %>% setnames("i.score","insilico_score")
+  
+  seq.ranges %>% map(function(j) {
+    
+    true_positives = sum(!is.na(ov.dt[insilico_score>=j,start]))
+    false_negatives = sum(!is.na(ov.dt[insilico_score<=j,start]))
+    false_positives = sum(is.na(ov.dt[insilico_score>=j,start]))
+    true_negatives = sum(is.na(ov.dt[insilico_score<=j,start]))
+    
+    true_positive_rate = true_positives / (true_positives + false_negatives)
+    false_positive_rate = false_positives / (false_positives+true_negatives)
+    
+    data.table(chip=i, min_score=j, tpr=true_positive_rate, fpr=false_positive_rate)
+    
+  }) %>% rbindlist
+}) %>% rbindlist
+
+ggplot(roc.dt, aes_string(x="fpr", y="tpr", color="chip")) +
+  geom_line(size=1) +
+  geom_abline(slope=1, intercept=0, linetype="dashed") +
+  labs(x="False positive rate", y="True positive rate") +
+  theme_classic() +
+  theme(
+    axis.text = element_text(color="black")
+  )
+
+
+########################
+## Explore thresholds ##
+########################
+
+# opts$TFs <- "TAL1"
+# 
+# chip_insilico.dt <- opts$TFs %>% map(function(i) {
+#   fread(sprintf("%s/%s.bed.gz",io$virtual_chip.dir,i)) %>%
+#     setnames(c("chr","start","end","score")) %>%
+#     .[,id:=sprintf("%s:%s-%s",chr,start,end)] %>%
+#     # .[score>=opts$min_virtual_chip_score] %>%
+#     .[score>=0] %>%
+#     .[,tf:=i] %>%
+#     return
+# }) %>% rbindlist %>% setkey(chr,start,end)
+# 
+# npeaks <- seq(1000,5000,by=500)
+# 
+# chip.dt <- opts$TFs %>% map(function(i) {
+#   map(npeaks, function(j) {
+#     fread(io$chip_peaks.files[[i]], select=c(1,2,3,5)) %>%
+#       setnames(c("chr","start","end","score")) %>%
+#       .[chr!="chrM"] %>%
+#       .[,id:=sprintf("%s:%s-%s",chr,start,end)] %>%
+#       # .[score>=opts$min_chip_score] %>% 
+#       setorder(-score) %>% head(n=j) %>%
+#       .[,npeaks:=j] %>%
+#       return
+#   }) %>% rbindlist %>% .[,tf:=i]
+# }) %>% rbindlist %>% setkey(chr,start,end)
+# 
+# chip.dt[,.N,by=c("npeaks","tf")]
+# 
+# 
+# chip_peaks_with_motif.dt <- opts$TFs %>% map(function(i) {
+#   map(npeaks, function(j) {
+#     
+#     gr <- makeGRangesFromDataFrame(chip.dt[tf==i & npeaks==j], keep.extra.columns = T)
+#     
+#     motifmatcher.se <- motifmatchr::matchMotifs(
+#       pwms = pwms[i],
+#       subject = gr,
+#       genome = BSgenome.Mmusculus.UCSC.mm10, 
+#       out = "matches", 
+#       p.cutoff = 0.001, 
+#       w = 7
+#     ); rownames(motifmatcher.se) <- gr$id
+#     
+#     peaks.with.motif <- names(which(assay(motifmatcher.se)[,1]))
+#     return(chip.dt[tf==i & npeaks==j & id%in%peaks.with.motif])
+#   
+#   }) %>% rbindlist
+# }) %>% rbindlist %>% setkey(chr,start,end)
+# 
+# chip_peaks_with_motif.dt[,.N,by=c("npeaks","tf")]
+# 
+# roc.dt <- opts$TFs %>% map(function(i) {
+#   map(npeaks, function(j) {
+#     ov.dt <- foverlaps(chip_insilico.dt[tf==i], chip_peaks_with_motif.dt[tf==i & npeaks==j]) %>% setnames("i.score","insilico_score")
+#     seq.ranges %>% map(function(k) {
+#     
+#       
+#       true_positives = sum(!is.na(ov.dt[insilico_score>=k,start]))
+#       false_negatives = sum(!is.na(ov.dt[insilico_score<=k,start]))
+#       false_positives = sum(is.na(ov.dt[insilico_score>=k,start]))
+#       true_negatives = sum(is.na(ov.dt[insilico_score<=k,start]))
+#       
+#       true_positive_rate = true_positives / (true_positives + false_negatives)
+#       false_positive_rate = false_positives / (false_positives+true_negatives)
+#       
+#       data.table(tf=i, npeaks=j, min_score=k, tpr=true_positive_rate, fpr=false_positive_rate)
+#       
+#     }) %>% rbindlist
+#   }) %>% rbindlist
+# }) %>% rbindlist
+# 
+# roc.dt[,npeaks:=factor(npeaks)]
+# 
+# ggplot(roc.dt, aes_string(x="fpr", y="tpr", color="npeaks")) +
+#   facet_wrap(~tf) +
+#   geom_line(size=0.5) +
+#   geom_abline(slope=1, intercept=0, linetype="dashed") +
+#   labs(x="False positive rate", y="True positive rate") +
+#   theme_classic() +
+#   theme(
+#     axis.text = element_text(color="black")
+#   )
+

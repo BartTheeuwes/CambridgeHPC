@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH -p skylake
+#SBATCH -A gottgens-sl2-cpu
+#SBATCH -N 1
+#SBATCH -n 22
+#SBATCH --time 24:00:00
+#SBATCH --job-name souporcell
+#SBATCH --output souporcell-log-%J.txt
+#SBATCH -e souporcell.%N.%j.err
+
+sample=$1
+
+sample_folder="/rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/data/SLX21184/genotyping/SLX-21184_"$sample"_H5NKNDMXY/outs/"
+bam="possorted_genome_bam.bam"
+barcodes="barcodes.tsv"
+genotypes="g129S1_SvImJ C57BL_6NJ"
+
+output="/rds/project/rds-SDzz0CATGms/users/bt392/06_Runx1_RNA/data/genotyping/"$sample"_common_variants/"
+
+referencefasta="/rds/project/rds-SDzz0CATGms/references/10x/refdata-gex-mm10-2020-A/fasta/genome.fa"
+
+vcf="/rds/project/rds-SDzz0CATGms/users/bt392/atlasses/cluster_genotypes_chr_labelled.vcf"
+
+gunzip -c $sample_folder/filtered_feature_bc_matrix/$barcodes.gz > $sample_folder$barcodes
+
+# Common Variants skip remap
+singularity exec /rds/project/rds-SDzz0CATGms/users/bt392/software/souporcell_latest.sif souporcell_pipeline.py -i $sample_folder$bam  -b $sample_folder$barcodes  -f $referencefasta  -t 22  -k 2 -o $output  --common_variants $vcf --skip_remap SKIP_REMAP

@@ -1,0 +1,289 @@
+######################
+## Global variables ##
+######################
+
+samples:
+    - rv_eo_deg_day3_5_control
+    - rv_eo_deg_day3_5_dtag
+    - rv_eo_deg_day4_5_control
+    - rv_eo_deg_day4_5_dtag
+    - rv_eo_deg_day4_control
+    - rv_eo_deg_day4_dtag
+    - 1A_Eo_DEG_G9_day3
+    - 1B_Eo_DEG_G9_day3
+    - 2_Eo_DEG_G9_day3_5_dTAG
+    - 2_Eo_DEG_G9_day3_5_VC
+    - 2_Eo_DEG_G9_day4_dTAG
+    - 2_Eo_DEG_G9_day4_VC
+    - 2_Eo_DEG_G9_day5_dTAG
+    - 2_Eo_DEG_G9_day5_VC
+
+atlas_stages: ["E7.5","E7.75","E8.0","E8.5","E8.75"]
+days: ["D3","D3.5","D4","D4.5","D5"]
+celltypes: ["Epiblast", "Primitive_Streak", "Caudal_epiblast", "PGC", "Anterior_Primitive_Streak", "Notochord", "Def._endoderm", "Gut", "Nascent_mesoderm", "Mixed_mesoderm", "Intermediate_mesoderm", "Caudal_Mesoderm", "Paraxial_mesoderm", "Somitic_mesoderm", "Pharyngeal_mesoderm", "Cardiomyocytes", "Allantois", "ExE_mesoderm", "Mesenchyme", "Haematoendothelial_progenitors", "Endothelium", "Blood_progenitors_1", "Blood_progenitors_2", "Erythroid1", "Erythroid2", "Erythroid3", "NMP", "Rostral_neurectoderm", "Caudal_neurectoderm", "Neural_crest", "Forebrain_Midbrain_Hindbrain", "Spinal_cord", "Surface_ectoderm", "Visceral_endoderm", "ExE_endoderm", "ExE_ectoderm", "Parietal_endoderm"]
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood
+    original_data: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/original
+    processed_data: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/processed/atac
+    results: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/results/atac/archR
+    archr_directory: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/processed/atac/archR
+
+files:
+    rna_metadata: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/results/rna/doublet_detection/sample_metadata_after_doublets.txt.gz
+
+
+###############
+## Resources ##
+###############
+
+resources:
+    genome: mm10
+    gene_metadata: /rds/project/rds-SDzz0CATGms/users/bt392/atlasses/Mmusculus_genes_BioMart.87.txt
+    cell_metadata: /rds/project/rds-SDzz0CATGms/users/bt392/09_Eomes_invitro_blood/results/rna/qc/sample_metadata_after_qc.txt.gz
+    #manual_motifs: /bi/group/reik/ricard/data/hg38_regulation/tf_motifs/jaspar
+    python: /home/bt392/miniconda3/envs/env_multiome/bin/python
+    
+#############
+## Scripts ##
+#############
+
+scripts:
+
+    # Basic processing
+    create_arrow_files: ../processing/0_create_arrow_files.R
+    create_archr_project: ../processing/1_create_archR_project.R
+    create_archr_metadata: ../processing/2_create_archR_metadata.R
+    qc_archr: ../processing/3_qc.R
+    save_atac_matrices: ../processing/save_atac_matrices.R
+    save_atac_anndata: ../processing/save_atac_anndata.R
+
+    # Gene scores
+    add_gene_scores: ../gene_scores/add_GeneScore_matrices.R
+    gene_scores: ../gene_scores/add_GeneScore_matrices.R
+
+    # Pseudobulk
+    add_group_coverage: ../pseudobulk/1_archR_add_GroupCoverage.R
+    pseudobulk: ../pseudobulk/2_archR_pseudobulk.R
+    pseudobulk_with_replicates: ../pseudobulk/archR_pseudobulk_with_replicates.R
+
+    # Peak calling
+    peak_calling: ../peak_calling/peak_calling_archR.R
+    add_custom_peakset: ../peak_calling/add_custom_peakSet_archR.R
+    plot_peak_calling_stats: ../peak_calling/analysis/plot_peak_calling_stats_archR.R
+    link_peaks_to_genes: ../peak_calling/analysis/link_peaks2genes_genomic_distance.R
+
+    # TF motif annotations
+    add_motif_annotation: ../add_motif_annotation/archR_add_motif_annotation.R
+    add_motif_annotation_manual: ../add_motif_annotation/add_motif_annotation_manual.R
+
+    # chromVAR
+    background_peaks: ../add_motif_annotation/archR_add_background_peaks.R
+    run_chromvar_cells: ../chromvar/cells/run_chromvar_from_archR.R
+    run_chromvar_pseudobulk: ../chromvar/pseudobulk/run_chromvar_pseudobulk.R
+    
+    # dimensionality reduction
+    dimensionality_reduction_cells: ../dimensionality_reduction/cells/archR_dimensionality_reduction.R #atac_dimensionality_reduction_cells.R
+    archR_clustering: ../dimensionality_reduction/cells/archR_clustering.R
+
+    # differential accessibility between genotypes
+    # differential_celltype_genotype_cells: (...)
+    differential_celltype_genotype_pseudobulk: ../differential/pseudobulk/celltype_genotype/differential_accessibility_celltype_genotype_pseudobulk.R
+
+    # Parse differential accessibility results
+    # parse_differential_celltype_genotype_cells: (..)
+    parse_differential_celltype_genotype_pseudobulk: ../differential/pseudobulk/celltype_genotype/parse_differential_results.R
+
+    # Celltype assignment
+    # celltype_assignment: ../celltype_assignment/archR_celltype_assignment.R
+
+    # Feature stats
+    calculate_feature_stats: ../feature_stats/archR_calculate_feature_stats.R
+    
+    # Export bigwig files
+    create_bigwigs: ../bigwig/archR_export_bw.R
+
+
+################
+## Parameters ##
+################
+
+create_arrow_files:
+    min_fragments: 1000
+    max_fragments: 1000000
+    min_tss_score: 2.5
+
+qc_archr:
+    min_tss_enrichment: 9
+    max_tss_enrichment: 35
+    min_number_fragments: 3500
+    max_number_fragments: 1000000
+    max_blacklist_ratio: 0.05
+    
+dimensionality_reduction_TileMatrix:
+    seed: 42
+    matrix: ["TileMatrix"]
+    lsi_iterations: 4
+    nfeatures: [20000] #, 35000, 45000
+    ndims: [30] # , 35, 45
+    n_neighbors: [25]
+    min_dist: [0.3]
+    colour_by: ["sample","day","nFrags_atac", "genotype"]
+    remove_ExE_cells: ["FALSE"] #, "True"] # ExE cells not expected to be present since in vitro
+    batch_variable: ["None"] # ,"None"
+    batch_method: "MNN" #"Harmony" #"MNN"
+    
+archR_clustering_TileMatrix:
+    matrix: 'TileMatrix'
+    cluster_resolution: 0.5
+    
+add_group_coverage:
+    group_by: ["Clusters_TileMatrix_genotype"]
+    min_cells: 50
+    max_cells: 5000
+
+peak_calling:
+    group_by: "Clusters_TileMatrix_genotype"
+#    pathToMacs2: "/bi/group/reik/ricard/software/miniconda3/envs/main/bin/macs2"
+    pvalue_cutoff: 0.001
+    extend_summits: 300
+
+add_custom_peakset:
+    peak_set: "/rds/project/rds-SDzz0CATGms/users/bt392/atlasses/gastrulation_multiome/data/processed/atac/archR/PeakCalls/peak_metadata.tsv.gz"
+    peakset_name: "PeakMatrix_atlas"
+ 
+background_peaks:
+    method: "chromVAR"
+    number_background_peaks: 50
+    
+add_motif_annotation:
+    cutoff: 0.0001
+    width: 7
+
+run_chromvar_cells:
+    motif_annotation: ["JASPAR", "CISBP"]
+    min_peaks: 50    
+
+save_atac_matrices:
+    matrices: ["PeakMatrix", "GeneScoreMatrix_TSS", "GeneScoreMatrix_distal", "PeakMatrix_atlas"] 
+    
+dimensionality_reduction_PeakMatrix:
+    seed: 42
+    matrix: ["PeakMatrix"] #  , "PeakMatrix_atlas"
+    lsi_iterations: 4
+    nfeatures: [25000] #, 35000, 45000, 55000
+    ndims: [20] # , 25, 30
+    n_neighbors: [25]
+    min_dist: [0.3]
+    colour_by: ["sample","day", "genotype"]
+    remove_ExE_cells: ["FALSE"] #, "True"] # ExE cells not expected to be present since in vitro
+    batch_variable: ["None"] # ,"None"
+    batch_method: "MNN" #"Harmony" #"MNN"
+    
+archR_clustering_PeakMatrix:
+    matrix: 'PeakMatrix'
+    cluster_resolution: 2
+
+pseudobulk:
+    group_by: ["Clusters_PeakMatrix2"]
+    matrix: ["PeakMatrix"]
+
+calculate_feature_stats:
+    group_by: ["Clusters_PeakMatrix2"]
+    matrix: ["PeakMatrix"]
+
+link_peaks_to_genes:
+    gene_window: 150000
+
+create_bigwigs:
+    group_by: ["celltype_genotype"]
+    norm_method: "ReadsInTSS"
+    tile_size: 100
+    min_cells: 50
+
+# plot_peak_calling_stats:
+#     min_peak_score: 10
+
+pseudobulk_with_replicates:
+    nrep: 5
+    min_cells: 25
+    fraction_cells_per_replicate: 0.30
+
+###########
+## Slurm ##
+###########
+
+slurm:  # memory in MB
+    create_arrow_files: 
+        threads: 1
+        memory: 90000
+    create_archr_project:
+        threads: 1
+        memory: 5000
+    create_archr_metadata:
+        threads: 1
+        memory: 5000
+    qc_archr: 
+        threads: 16
+        memory: 15000
+    archR_clustering_TileMatrix: 
+        threads: 16
+        memory: 15000
+    add_group_coverage:
+        threads: 16
+        memory: 25000
+    add_gene_scores:
+        threads: 4
+        memory: 50000
+    peak_calling:
+        threads: 1
+        memory: 90000
+    add_custom_peakset:
+        threads: 1
+        memory: 60000
+    create_bigwigs:
+        threads: 1
+        memory: 50000
+    dimensionality_reduction:
+        threads: 16
+        memory: 25000
+    pseudobulk:
+        threads: 1
+        memory: 10000
+    pseudobulk_with_replicates:
+        threads: 16
+        memory: 60000
+    add_motif_annotation:
+        threads: 32
+        memory: 10000
+    background_peaks:
+        threads: 16
+        memory: 10000
+    run_chromvar_cells:
+        threads: 14
+        memory: 90000
+    link_peaks_to_genes:
+        threads: 1
+        memory: 5000
+    plot_peak_calling_stats:
+        threads: 1
+        memory: 60000
+    save_atac_matrices:
+        threads: 1
+        memory: 90000
+    differential_cells:
+        threads: 1
+        memory: 5000
+    differential_pseudobulk:
+        threads: 1
+        memory: 5000
+    parse_differential:
+        threads: 1
+        memory: 25000
+    calculate_feature_stats:
+        threads: 1
+        memory: 50000

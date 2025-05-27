@@ -10,8 +10,8 @@
 
 chrombpnet createBW \
     -g /rds/project/rds-SDzz0CATGms/references/10x/refdata-cellranger-arc-mm10-2020-A-2.0.0/fasta/genome.fa \
-    -ifrag ../../../results/atac/chrombpnet/fragments/PS_EOi_fragments.tsv.gz \
+    -ifrag ../../../results/atac/chrombpnet/fragments/fragments_small.tsv.gz \
     -c ../../../results/atac/chrombpnet/mm10.chrom.sizes \
     -d "ATAC" \
-    -o ../../../results/atac/chrombpnet/reads_to_bigwig_test \
+    -o ../../../results/atac/chrombpnet/reads_to_bigwig_test2 \
     --tmpdir ../../../results/atac/chrombpnet/tmp

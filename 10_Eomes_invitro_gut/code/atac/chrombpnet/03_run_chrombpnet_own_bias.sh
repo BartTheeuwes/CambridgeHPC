@@ -33,3 +33,16 @@ chrombpnet pipeline \
    -b ../../../results/atac/chrombpnet/bias_model07/models/EOi_multiome_bias.h5 \
    -o ../../../results/atac/chrombpnet/bias_$1/ \
    --tmpdir ../../../results/atac/chrombpnet/tmp  
+   
+   
+   chrombpnet pipeline \
+   -ifrag ../../../results/atac/chrombpnet/fragments/fragments_small.tsv.gz \
+   -d "ATAC" \
+   -g /rds/project/rds-SDzz0CATGms/references/10x/refdata-cellranger-arc-mm10-2020-A-2.0.0/fasta/genome.fa \
+   -c ../../../results/atac/chrombpnet/mm10.chrom.sizes \
+   -p ../../../results/atac/chrombpnet/all_peaks.bed \
+   -n ../../../results/atac/chrombpnet/all_negatives.bed \
+   -fl ../../../results/atac/chrombpnet/fold0.json \
+   -b ../../../results/atac/chrombpnet/bias_model07/models/EOi_multiome_bias.h5 \
+   -o ../../../results/atac/chrombpnet/whole_pipeline_trial_toseeifbigwigcreationworks/ \
+   --tmpdir ../../../results/atac/chrombpnet/tmp  

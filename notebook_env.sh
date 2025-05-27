@@ -2,7 +2,7 @@
 #SBATCH -p icelake  #-himem  #icelake #skylake #-himem #cclake
 #SBATCH -A gottgens-sl2-cpu
 #SBATCH -N 1
-#SBATCH -n 1
+#SBATCH -n 42
 #SBATCH --time 03:00:00
 #SBATCH --job-name multiome
 #SBATCH --output logs/jupyter_log.txt

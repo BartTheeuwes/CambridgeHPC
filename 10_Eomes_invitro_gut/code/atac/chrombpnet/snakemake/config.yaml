@@ -1,0 +1,24 @@
+# Define datasets and folds as a configuration variable
+celltypes: ["PS_EOd", "PS_EOi"] # , "PS_EOd"
+folds: ['fold0','fold1','fold2','fold3','fold4'] # ,'fold2','fold3','fold4'
+
+directories:
+    base: /rds/project/rds-SDzz0CATGms/users/bt392/10_Eomes_invitro_gut/code/atac/chrombpnet/snakemake
+    results: /rds/project/rds-SDzz0CATGms/users/bt392/10_Eomes_invitro_gut/results/atac/chrombpnet
+    conda: /home/bt392/miniconda3/envs/
+    rds: /rds/project/rds-SDzz0CATGms/users/bt392/
+    
+resources:
+    genome: /rds/project/rds-SDzz0CATGms/references/10x/refdata-cellranger-arc-mm10-2020-A-2.0.0/fasta/genome.fa
+    chromsizes: /rds/project/rds-SDzz0CATGms/users/bt392/10_Eomes_invitro_gut/results/atac/chrombpnet/mm10.chrom.sizes
+    
+scripts:
+    get_background: 02_get_background_peaks_args.sh
+    create_bigwigs: 03_create_bigwigs.sh
+    
+    run_chrombpnet: 05_run_chrombpnet.sh
+    contributions: 06_contrib_bw.sh
+    mean_contributions: 07_mean_contributions.sh
+    TF_modisco: 08_TFmodisco.sh
+    combine_motifs: 09_motif_compendium.sh
+    finemo: 10_finemo.sh
